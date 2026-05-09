@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commission Savings Tracker</title>
+
+<style>
+    body{
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: white;
+        display: flex;
+        justify-content: center;
+        padding: 30px;
+    }
+
+    .container{
+        width: 400px;
+        background: #1e293b;
+        padding: 25px;
+        border-radius: 20px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.4);
+    }
+
+    h1{
+        text-align: center;
+        margin-bottom: 20px;
+        color: #60a5fa;
+    }
+
+    input, button{
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 10px;
+        font-size: 16px;
+    }
+
+    input{
+        background: #334155;
+        color: white;
+    }
+
+    button{
+        background: #3b82f6;
+        color: white;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    button:hover{
+        background: #2563eb;
+    }
+
+    .withdraw-btn{
+        background: #ef4444;
+    }
+
+    .withdraw-btn:hover{
+        background: #dc2626;
+    }
+
+    .stats{
+        margin-top: 20px;
+    }
+
+    .card{
+        background: #334155;
+        padding: 15px;
+        border-radius: 12px;
+        margin-top: 10px;
+    }
+
+    .progress-bar{
+        width: 100%;
+        height: 25px;
+        background: #475569;
+        border-radius: 20px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+
+    .progress{
+        height: 100%;
+        width: 0%;
+        background: #22c55e;
+        transition: 0.5s;
+    }
+
+    ul{
+        list-style: none;
+        padding: 0;
+    }
+
+    li{
+        background: #475569;
+        padding: 10px;
+        border-radius: 10px;
+        margin-top: 8px;
+    }
+
+    /* ===== MODAL ===== */
+    .modal{
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .hidden{
+        display: none;
+    }
+
+    .modal-box{
+        background: #1e293b;
+        padding: 20px;
+        border-radius: 16px;
+        width: 300px;
+        text-align: center;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .modal-box h3{
+        color: #60a5fa;
+        margin-bottom: 10px;
+    }
+
+    .modal-box p{
+        margin-bottom: 15px;
+    }
+
+    #modal-input{
+        width: 100%;
+        padding: 10px;
+        border-radius: 10px;
+        border: none;
+        background: #334155;
+        color: white;
+        display: none;
+    }
+
+    .modal-buttons{
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .modal-buttons button{
+        flex: 1;
+        padding: 10px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+    }
+
+    #modal-cancel{
+        background: #ef4444;
+        color: white;
+    }
+
+    #modal-ok{
+        background: #3b82f6;
+        color: white;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>💰 Savings Tracker</h1>
+
+<input type="number" id="amount" placeholder="Enter commission amount">
+<input type="number" id="goal" placeholder="Set savings goal">
+
+<button onclick="addMoney()">Add Earnings</button>
+<button class="withdraw-btn" onclick="withdrawMoney()">Withdraw Savings</button>
+
+<div class="stats">
+    <div class="card">
+        <h3>Total Savings</h3>
+        <p id="total">₱0</p>
+    </div>
+
+    <div class="card">
+        <h3>Savings Goal Progress</h3>
+        <p id="goalText">₱0 / ₱0</p>
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Commission History</h3>
+        <ul id="history"></ul>
+    </div>
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal hidden">
+    <div class="modal-box">
+        <h3 id="modal-title"></h3>
+        <p id="modal-text"></p>
+        <input id="modal-input" type="number">
+        <div class="modal-buttons">
+            <button id="modal-cancel">Cancel</button>
+            <button id="modal-ok">OK</button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+let total = 0;
+let history = [];
+let modalResolve;
+
+function updateUI(){
+    document.getElementById("total").innerText = "₱" + total;
+
+    let goal = parseFloat(document.getElementById("goal").value) || 0;
+
+    document.getElementById("goalText").innerText =
+        "₱" + total + " / ₱" + goal;
+
+    let percent = goal ? (total / goal) * 100 : 0;
+    if(percent > 100) percent = 100;
+
+    document.getElementById("progress").style.width = percent + "%";
+
+    let list = document.getElementById("history");
+    list.innerHTML = "";
+
+    for(let i = history.length - 1; i >= 0; i--){
+        let li = document.createElement("li");
+        li.innerText = history[i];
+        list.appendChild(li);
+    }
+}
+
+/* ===== MODAL SYSTEM ===== */
+
+function showModal({ title, text, input = false }) {
+    return new Promise((resolve) => {
+        modalResolve = resolve;
+
+        document.getElementById("modal-title").innerText = title;
+        document.getElementById("modal-text").innerText = text;
+
+        let inputBox = document.getElementById("modal-input");
+
+        if(input){
+            inputBox.style.display = "block";
+            inputBox.value = "";
+        } else {
+            inputBox.style.display = "none";
+        }
+
+        document.getElementById("modal").classList.remove("hidden");
+    });
+}
+
+function closeModal(value){
+    document.getElementById("modal").classList.add("hidden");
+    modalResolve(value);
+}
+
+document.getElementById("modal-ok").onclick = () => {
+    let input = document.getElementById("modal-input");
+
+    if(input.style.display === "block"){
+        closeModal(input.value);
+    } else {
+        closeModal(true);
+    }
+};
+
+document.getElementById("modal-cancel").onclick = () => {
+    closeModal(null);
+};
+
+/* ===== FUNCTIONS ===== */
+
+function addMoney(){
+    let amount = parseFloat(document.getElementById("amount").value);
+
+    if(isNaN(amount) || amount <= 0){
+        showModal({title:"Error", text:"Invalid amount"});
+        return;
+    }
+
+    total += amount;
+    history.push("+ ₱" + amount);
+    document.getElementById("amount").value = "";
+    updateUI();
+}
+
+async function withdrawMoney(){
+
+    let amount = await showModal({
+        title: "Withdraw Savings",
+        text: "How much do you want to withdraw?",
+        input: true
+    });
+
+    amount = parseFloat(amount);
+
+    if(isNaN(amount) || amount <= 0){
+        showModal({title:"Error", text:"Invalid amount"});
+        return;
+    }
+
+    if(amount > total){
+        showModal({title:"Oops", text:"Not enough savings"});
+        return;
+    }
+
+    let c1 = await showModal({title:"Confirm", text:"Is this really worth it?"});
+    if(!c1) return;
+
+    let c2 = await showModal({title:"Confirm", text:"Is this necessary?"});
+    if(!c2) return;
+
+    let c3 = await showModal({title:"Confirm", text:"Will future you be happy?"});
+    if(!c3) return;
+
+    total -= amount;
+    history.push("- ₱" + amount);
+    updateUI();
+
+    showModal({title:"Success", text:"Withdrawal successful"});
+}
+
+updateUI();
+
+</script>
+
+</body>
+</html>
